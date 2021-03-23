@@ -1,9 +1,8 @@
 /*     
     tv-cover-control 
     Bernhard Frenking
-    March 2021
-    v1.0
 */
+const char* software_version = "v1.0";
 
 #include "secrets.h"
 #include <ESP8266WiFi.h> 
@@ -21,7 +20,7 @@
 #define PIN_TV        D7
 #define PIN_PWR       D1
 #define PIN_BRK       D8
-//#define PIN_ENA   // enable stepper driver - if floating, always on for Integrated Stepper Motor Driver ISD04
+//#define PIN_ENA   // enable stepper driver - if floating, always on for stepper motor driver ISD04
 
 // positions as steps
 #define CLOSE_STEPS 0               
@@ -30,7 +29,7 @@
 #define PERCENT 174 // for moving in percent of travel (hard coded to prevent calc. during runtime)
 
 // stepper and break tuning
-#define STEP_PULS_DURATION 5    // low level >4µs for Integrated Stepper Motor Driver ISD04
+#define STEP_PULS_DURATION 5    // low level >4µs for stepper motor driver ISD04
 #define STEP_DURATION 450       // defines speed of stepper motor in µs 
 #define PWR_DELAY 500           // delay for power in ms
 #define BRK_DELAY 700           // delay for break in ms
@@ -42,7 +41,6 @@
 const char* host = "TV-Cover-Control";
 ESP8266WebServer httpServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
-const char* software_version = "v1.0";
 
 // MQTT
 const char* tv_position_topic = "tv/cover/set";         
@@ -92,7 +90,6 @@ PubSubClient client(espClient);
 // Setup ------------------------------------------------------------------------------------------------
 void setup() {
   // Sets the pins
-  //pinMode(LED_BUILTIN, OUTPUT);       // Initialize the LED_BUILTIN pin as an output
   pinMode(PIN_SENSOR_R, INPUT_PULLUP);  // Initialize Sensor
   pinMode(PIN_SENSOR_L, INPUT);         // Initialize Sensor
   pinMode(PIN_STEP_R, OUTPUT);
@@ -106,7 +103,7 @@ void setup() {
   digitalWrite(PIN_TV, HIGH);   // disable TV
   digitalWrite(PIN_PWR, HIGH);  // disable 24V PWR
   digitalWrite(PIN_BRK, HIGH);  // fasten break
-  digitalWrite(PIN_DIR, HIGH);  // Up: Enables the stepper to move in a particular direction
+  digitalWrite(PIN_DIR, HIGH);  // up
   
   //connect to WiFi
   WiFi.mode(WIFI_STA);
@@ -221,7 +218,7 @@ void loop() {
         target_position = CLOSE_STEPS; 
       } 
       else {                                             
-        if (stop_req == false) {                            // move one step
+        if (stop_req == false) {            // move one step
           // enable stepper with direction and release break on first loop of movement
           if (moving == false) { 
             //Serial.println("moving up");
@@ -229,7 +226,7 @@ void loop() {
           }          
           step(getStepSide(contactLeft, contactRight));
           current_position--;
-        } else if (stop_req == true) {                    // stop, if requested
+        } else if (stop_req == true) {     // stop, if requested
           stop_req = false;          
           target_position = current_position;
         }
@@ -281,7 +278,7 @@ bool onTarget(int current_position) {
 
 bool movePrep(int current_position, int target_position) {
     if ( current_position > target_position )  { 
-    digitalWrite(PIN_DIR, HIGH); // Up: Enables the stepper to move in a particular direction
+    digitalWrite(PIN_DIR, HIGH); // up
     publish_tv_position_state_topic("closing"); // open, opening, closed, closing
     //Serial.println("move first loop: set dir to up");
     //Serial.print("current position: ");
@@ -289,7 +286,7 @@ bool movePrep(int current_position, int target_position) {
     //Serial.print("target position: ");
     //Serial.println(target_position);
   } else {
-    digitalWrite(PIN_DIR, LOW); // Down: Enables the stepper to move in a particular direction        
+    digitalWrite(PIN_DIR, LOW); // down        
     publish_tv_position_state_topic("opening"); // open, opening, closed, closing
     //Serial.println("move first loop: set dir to down");
     //Serial.print("current position: ");
@@ -299,7 +296,7 @@ bool movePrep(int current_position, int target_position) {
   }
   digitalWrite(PIN_PWR, LOW); // enable 24V for stepper
   delay(PWR_DELAY);
-  digitalWrite(PIN_BRK, LOW);  // release break
+  digitalWrite(PIN_BRK, LOW); // release break
   delay(BRK_DELAY);
   return true; // moving
 }
@@ -316,28 +313,28 @@ side getStepSide(bool contactLeft, bool contactRight) {
 
 void publish_tv_availability_state_topic(String availability_state) {
   availability_state.toCharArray(buf, availability_state.length() + 1);
-  client.publish(tv_availability_state_topic, buf); //, true);
+  client.publish(tv_availability_state_topic, buf); 
 }
 
 void publish_tv_position_state_topic(String position_state) {
   position_state.toCharArray(buf, position_state.length() + 1);
-  client.publish(tv_position_state_topic, buf); //, true);
+  client.publish(tv_position_state_topic, buf);
 }
 
 void publish_tv_position_percentage_state_topic(int current_position) {
-  tmp_str = String(current_position * (float)100 / OPEN_STEPS); //converting to percent and to a string
+  tmp_str = String(current_position * (float)100 / OPEN_STEPS); //converting to percent and string
   tmp_str.toCharArray(buf, tmp_str.length() + 1);
-  client.publish(tv_position_percentage_state_topic, buf); //, true);
+  client.publish(tv_position_percentage_state_topic, buf);
 }
 
 void publish_tvPowerSwitch_state_topic(String switch_tv) {
   switch_tv.toCharArray(buf, switch_tv.length() + 1);
-  client.publish(tv_power_switch_state_topic, buf); //, true);
+  client.publish(tv_power_switch_state_topic, buf);
 }
 
 void publish_brakeSwitch_state_topic(String switch_brake) {
   switch_brake.toCharArray(buf, switch_brake.length() + 1);
-  client.publish(tv_brake_switch_state_topic, buf); //, true);
+  client.publish(tv_brake_switch_state_topic, buf);
 }
 
 bool checkSensorContact(side choosenSide) {
