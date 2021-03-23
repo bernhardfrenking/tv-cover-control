@@ -1,0 +1,4 @@
+ - platform: mqtt
+   name: "TV-Bild Aufzugsposition"
+   qos: 0
+   state_topic: "tv/cover/position"

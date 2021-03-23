@@ -1,0 +1,31 @@
+  - title: TV
+    path: tv
+    icon: 'mdi:television-classic'
+    cards:
+      - type: button
+        tap_action:
+          action: toggle
+        entity: input_boolean.tv_scene
+        name: Popcorn-Zeit
+        icon: 'mdi:television-classic'
+      - type: entity
+        entity: cover.tv_bild_status
+      - type: entities
+        entities:
+          - entity: cover.tv_bild_position
+          - entity: input_select.tv_pic_command
+          - entity: sensor.tv_bild_aufzugsposition
+      - type: entity
+        entity: sensor.tv_bild_aufzugsposition
+      - type: button
+        tap_action:
+          action: toggle
+        entity: switch.tv_schrittmotren_an_und_bremse_losen
+        show_state: false
+        show_icon: true
+        icon_height: 50px
+      - type: button
+        tap_action:
+          action: toggle
+        entity: switch.tv_stromschalter
+        icon_height: 50px

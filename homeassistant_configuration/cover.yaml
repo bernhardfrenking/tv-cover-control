@@ -1,0 +1,32 @@
+ - platform: mqtt
+   name: "TV-Bild: Status"
+   qos: 0
+   retain: false
+   optimistic: false
+   state_topic: "tv/cover/state"
+   command_topic: "tv/cover/set"
+   availability:
+     - topic: "tv/cover/availability"
+   payload_available: "online"
+   payload_not_available: "offline"
+   payload_open: "open"
+   payload_close: "close"
+   payload_stop: "stop"
+
+ - platform: mqtt
+   name: "TV-Bild: Position"
+   qos: 0
+   retain: false
+   optimistic: false
+   command_topic: "tv/cover/set"
+   position_topic: "tv/cover/position"
+   set_position_topic: "tv/cover/set_position"
+   availability:
+     - topic: "tv/cover/availability"
+   payload_available: "online"
+   payload_not_available: "offline"
+   position_open: 100
+   position_closed: 0
+   payload_open: "open"
+   payload_close: "close"
+   payload_stop: "stop"

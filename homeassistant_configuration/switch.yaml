@@ -1,0 +1,30 @@
+ # TV Power
+ - platform: mqtt
+   unique_id: tv_power_switch
+   name: "TV Stromschalter"
+   state_topic: "tv/switchTv/state"
+   command_topic: "tv/switchTv/set"
+   availability:
+     - topic: "tv/cover/availability"
+   payload_on: "ON"
+   payload_off: "OFF"
+   state_on: "ON"
+   state_off: "OFF"
+   optimistic: false
+   qos: 1
+   retain: true
+# TV Brake
+ - platform: mqtt
+   unique_id: tv_brake_switch
+   name: "TV Schrittmotoren an und Bremse lösen"
+   state_topic: "tv/switchBrake/state"
+   command_topic: "tv/switchBrake/set"
+   availability:
+     - topic: "tv/cover/availability"
+   payload_on: "ON"
+   payload_off: "OFF"
+   state_on: "ON"
+   state_off: "OFF"
+   optimistic: false
+   qos: 0
+   retain: false

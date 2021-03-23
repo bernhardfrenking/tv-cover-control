@@ -1,0 +1,23 @@
+- alias: "Send tv_pic_command, if value changed from empty String"
+  trigger:
+    platform: state
+    entity_id: input_select.tv_pic_command
+    from:
+    - ""
+  action:
+    service: mqtt.publish
+    data:
+      topic: "tv/cover/set"
+      retain: false
+      payload_template: "{{ states('input_select.tv_pic_command') }}"
+- alias: "Reset tv_pic_command to empty String after commmand fired"
+  trigger:
+    platform: state
+    entity_id: input_select.tv_pic_command
+  action:
+    - delay: "00:00:01"
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.tv_pic_command
+      data:
+        option: ""

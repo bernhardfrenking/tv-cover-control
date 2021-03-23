@@ -1,0 +1,4 @@
+tv_scene:
+  name: TV-Modus Scene
+  initial: off
+  icon: mdi:television

@@ -1,0 +1,17 @@
+tv_pic_command:
+  name: "TV-Bild Befehle"
+  options:
+    - ""
+    - "stop"
+    - "close"
+    - "tv"
+    - "open"
+    - "homing"
+    - "posUp"
+    - "posDown"
+    - "up1"
+    - "down1"
+    - "up10"
+    - "down10"
+    - "restart"
+  initial: ""
