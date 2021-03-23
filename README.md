@@ -1,6 +1,9 @@
 # tv-cover-control
 Control a stepper motor driven cover to hide your TV and switch power with an ESP8266 (Wemos D1 mini) feeded via MQTT (e.g. Home Assistant).
 
+Position (close, tv, open) comparisson:  
+<img src="images/cover_positions_open_tv_close_comparison.jpg" width="400">
+
 Sideview:  
 <img src="images/sideview.jpg" width="400">
 
@@ -21,3 +24,6 @@ Control backup via HTML page from webserver which is hosted directly on the ESP8
 
 Detail view of winch with stepper and sensor:  
 <img src="images/hardware_winch_with_stepper_and_sensor_detail.jpg" width="400">
+
+Front view without picture:  
+<img src="images/front_without_cover.jpg" width="400">
