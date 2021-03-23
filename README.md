@@ -1,23 +1,23 @@
 # tv-cover-control
-Control a stepper motor driven cover to hide your TV and switch power with a ESP8266 (Wemos D1 mini) feeded via MQTT (e.g. Home Assistant).
+Control a stepper motor driven cover to hide your TV and switch power with an ESP8266 (Wemos D1 mini) feeded via MQTT (e.g. Home Assistant).
 
-Control backup via HTML page from webserver hosted on ESP8266:
-![HTML backup page](images/tv-cover-control-html.jpg)
+Control backup via HTML page from webserver hosted on ESP8266:  
+<img src="images/tv-cover-control-html.jpg" width="400">
 
-Home Assistant closed:
-![Home Assistant open](images/homeassistant_lovelace_open.jpg)
+Home Assistant with cover open:  
+<img src="images/homeassistant_lovelace_open.jpg" width="400">
 
-Home Assistant closed:
-![Home Assistant closed](images/homeassistant_lovelace_closed.jpg)
+Home Assistant with cover closed:  
+<img src="images/homeassistant_lovelace_closed.jpg" width="400">
 
-NODE-RED overview:
-![NODE-RED overview](images/NODE-RED_overview.jpg)
+NODE-RED overview:  
+<img src="images/NODE-RED_overview.jpg" width="400">
 
-Home Assistant command via dropdown:
-![Home Assistant tv-control-commands](images/homeassistant_lovelace_commands.jpg)
+Home Assistant command via dropdown:  
+<img src="images/homeassistant_lovelace_commands.jpg" width="400">
 
-Sideview:
-![sideview](images/sideview.jpg)
+Sideview:  
+<img src="images/sideview.jpg" width="400">
 
-Winch with stepper and sensor:
-![Winch with stepper and sensor](images/hardware_winch_with_stepper_and_sensor_detail.jpg)
+Winch with stepper and sensor:  
+<img src="images/hardware_winch_with_stepper_and_sensor_detail.jpg" width="400">
