@@ -2,7 +2,7 @@
     tv-cover-control 
     Bernhard Frenking
 */
-const char* software_version = "v1.0";
+const char* software_version = "v1.1";
 
 #include "secrets.h"
 #include <ESP8266WiFi.h> 
@@ -20,18 +20,18 @@ const char* software_version = "v1.0";
 #define PIN_TV        D7
 #define PIN_PWR       D1
 #define PIN_BRK       D8
-//#define PIN_ENA   // enable stepper driver - if floating, always on for stepper motor driver ISD04
+//#define PIN_ENA        // enable stepper driver - if floating, always on for stepper motor driver ISD04
 
 // positions as steps
 #define CLOSE_STEPS 0               
 #define TV_STEPS 15356             
 #define OPEN_STEPS 17367      
-#define PERCENT 174 // for moving in percent of travel (hard coded to prevent calc. during runtime)
+#define PERCENT 174      // for moving in percent of travel (hard coded to prevent calc. during runtime)
 
 // stepper and break tuning
 #define STEP_PULS_DURATION 5    // low level >4µs for stepper motor driver ISD04
 #define STEP_DURATION 450       // defines speed of stepper motor in µs 
-#define PWR_DELAY 500           // delay for power in ms
+#define PWR_DELAY 700           // delay for power in ms
 #define BRK_DELAY 700           // delay for break in ms
 
 // wifi
@@ -140,7 +140,7 @@ void setup() {
   client.setServer(SECRET_MQTT_HOST, 1883);
   client.setCallback(callback);
   if (!client.connected()) {
-    reconnect(); // Wifi and MQTT
+    connectMQTT(); // Wifi and MQTT
   }
   
   // publish MQTT status messages
@@ -161,11 +161,11 @@ void loop() {
   
   // maintain MQTT connection
   if ( !client.loop() ) { // false, if not connected
-    reconnect(); // Wifi and MQTT
+    connectMQTT(); // Wifi and MQTT
     // publish MQTT status messages
     publish_tv_availability_state_topic("online");
-    publish_tvPowerSwitch_state_topic("OFF");
-    publish_brakeSwitch_state_topic("OFF");
+    //publish_tvPowerSwitch_state_topic(switchRequest);
+    //publish_brakeSwitch_state_topic(switchRequest);
   }  
 
   if (current_position > OPEN_STEPS || current_position < 0) {
@@ -313,18 +313,18 @@ side getStepSide(bool contactLeft, bool contactRight) {
 
 void publish_tv_availability_state_topic(String availability_state) {
   availability_state.toCharArray(buf, availability_state.length() + 1);
-  client.publish(tv_availability_state_topic, buf); 
+  client.publish(tv_availability_state_topic, buf, true); 
 }
 
 void publish_tv_position_state_topic(String position_state) {
   position_state.toCharArray(buf, position_state.length() + 1);
-  client.publish(tv_position_state_topic, buf);
+  client.publish(tv_position_state_topic, buf, true);
 }
 
 void publish_tv_position_percentage_state_topic(int current_position) {
   tmp_str = String(current_position * (float)100 / OPEN_STEPS); //converting to percent and string
   tmp_str.toCharArray(buf, tmp_str.length() + 1);
-  client.publish(tv_position_percentage_state_topic, buf);
+  client.publish(tv_position_percentage_state_topic, buf, true);
 }
 
 void publish_tvPowerSwitch_state_topic(String switch_tv) {
@@ -434,7 +434,6 @@ void switch24V(String switchRequest) {
   } else if (switchRequest == "ON"){
     digitalWrite(PIN_PWR, LOW); // enable
   }
-  publish_tvPowerSwitch_state_topic(switchRequest);
 } 
   
 void up1() {
@@ -502,10 +501,9 @@ void restart() {
 long checkWifi(long lastReconnectAttempt) {
   if (WiFi.status() == WL_CONNECTED) {    // check if WiFi connection is present
     // Wifi is connected
-    httpServer.handleClient();    // for HTTPupdate
+    httpServer.handleClient(); // for HTTPupdate
   }
   else { // Client is not connected
-    publish_tv_availability_state_topic("offline");
     long now = millis();
     if (now - lastReconnectAttempt > 10000) {
       lastReconnectAttempt = now;
@@ -603,8 +601,8 @@ void callback(char* topic, byte * payload, unsigned int length) {
   } // tv_position_topic
 } // mqtt callback
 
-// reconnect of wifi/mqtt
-boolean reconnect() {
+// connect mqtt
+boolean connectMQTT() {
   //Serial.println("reconnect");
   if (WiFi.status() != WL_CONNECTED) {    // check if WiFi connection is present
     //Serial.println("reconnect setup_wifi");
@@ -618,10 +616,10 @@ boolean reconnect() {
     client.subscribe(tv_position_percentage_topic, 0); // qos = 0
     client.subscribe(tv_position_topic, 0); // qos = 0
   }
-  //Serial.print("Wifi and MQTT connected: ");
+  //Serial.print("MQTT connected: ");
   //Serial.println(client.connected());
   return client.connected();
-} // reconnect()
+} // connectMQTT()
 
 void handleRoot() {
   //Serial.println("Connected to client");
@@ -749,7 +747,7 @@ String SendHTML() {
   ptr += "<body>\n";
 
   ptr += "<h1>TV-Controller</h1>\n";
-  //ptr += "<br></p>";
+  ptr += software_version;
 
   ptr += "<p>TV-Power</p><a class="" href=""></a>\n";
   ptr += "<a class=\"button button-10\" href=\"/tvOn\">On</a>&nbsp;\n";

@@ -24,6 +24,3 @@ Control backup via HTML page from webserver which is hosted directly on the ESP8
 
 Detail view of the right side (winch with stepper (brake is on the back of the stepper), sensor, fishing line and rail):  
 <img src="images/hardware_winch_with_stepper_and_sensor_detail.jpg" width="400">
-
-Front view without picture and TV:  
-<img src="images/front_without_cover.jpg" width="400">
