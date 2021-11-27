@@ -2,7 +2,7 @@
     tv-cover-control 
     Bernhard Frenking
 */
-const char* software_version = "v1.1";
+const char* software_version = "v1.2";
 
 #include "secrets.h"
 #include <ESP8266WiFi.h> 
@@ -24,9 +24,9 @@ const char* software_version = "v1.1";
 
 // positions as steps
 #define CLOSE_STEPS 0               
-#define TV_STEPS 15356             
-#define OPEN_STEPS 17367      
-#define PERCENT 174      // for moving in percent of travel (hard coded to prevent calc. during runtime)
+#define TV_STEPS 15125             
+#define OPEN_STEPS 17106      
+#define PERCENT 171      // for moving in percent of travel (hard coded to prevent calc. during runtime)
 
 // stepper and break tuning
 #define STEP_PULS_DURATION 5    // low level >4µs for stepper motor driver ISD04
@@ -57,7 +57,6 @@ String tmp_str; // String for publishing MQTT messages
 char buf[5]; // buffer publishing MQTT messages
 
 // requests/flags
-String position_req;
 bool stop_req = false;
 bool moving = false;
 bool homing = true;
@@ -189,8 +188,7 @@ void loop() {
       if (stop_req == false) {                            // move one step
         step(getStepSide(contactLeft, contactRight));
       } else {                                            // stop, if requested     
-        current_position = CLOSE_STEPS;
-        target_position = CLOSE_STEPS;
+        target_position = current_position;
         stop_req = false;     
         homing = false;
       } 
@@ -536,69 +534,70 @@ void setup_wifi() {
 
 void callback(char* topic, byte * payload, unsigned int length) { 
   String topicString = (char*)topic;
+  String payloadCmdAsString = (char*)payload;
+  payload[length] = '\0'; // Add end of line at end of char array to mark is as a string    
+  String position_req = (char *)payload;
 
-  // topic position in percent
-  if (topicString == tv_position_percentage_topic) {
-    String stringOne = (char*)payload;
-    String temp_s = stringOne.substring(0, length);
-    float temp_f = (float)temp_s.toInt(); // toInt returns long  
-    target_position = (int)((temp_f / 100) * (float)OPEN_STEPS); // from percentage to STEPS
-  }
+  // only execute if not moving or pause or reset commands
+  if (moving == false || (moving == true && ( position_req == "stop" || position_req == "restart" ))) {
+    // topic position in percent
+    if (topicString == tv_position_percentage_topic) {
+      String temp_s = payloadCmdAsString.substring(0, length);
+      float temp_f = (float)temp_s.toInt(); // toInt returns long  
+      target_position = (int)((temp_f / 100) * (float)OPEN_STEPS); // from percentage to STEPS
+    }
+    
+    // topic tv power switch
+    else if (topicString == tv_power_switch_topic) {
+      switchTv((char *)payload);
+    }
   
-  // topic tv power switch
-  if (topicString == tv_power_switch_topic) {
-    payload[length] = '\0'; // Add end of line at end of char array to mark is as a string    
-    switchTv((char *)payload);
+    // topic tv elevator brake switch
+    else if (topicString == tv_brake_switch_topic) {
+      switchBrake((char *)payload);
+    }
+  
+    // topic position 
+    else if (topicString == tv_position_topic) {
+      if (position_req == "close") {
+        posClose();
+      }
+      else if (position_req == "tv") {
+        posTv();
+      }
+      else if (position_req == "open") {
+        posOpen();
+      }
+      else if (position_req == "homing") {
+        homing = true;
+      }    
+      else if (position_req == "down1") {
+        down1();
+      }        
+      else if (position_req == "up1") {
+        up1();
+      }   
+      else if (position_req == "down10") {
+        down10();
+      }        
+      else if (position_req == "up10") {
+        up10();
+      }   
+      else if (position_req == "posDown") {
+        posDown();
+      }        
+      else if (position_req == "posUp") {
+        posUp();
+      }       
+      else if (position_req == "stop") {
+        stop();
+      }           
+      else if (position_req == "restart") {
+        restart();
+      } else {
+      }              
+    } // tv_position_topic
   }
-
-  // topic tv elevator brake switch
-  if (topicString == tv_brake_switch_topic) {
-    payload[length] = '\0'; // Add end of line at end of char array to mark is as a string
-    switchBrake((char *)payload);
-  }
-
-  // topic position 
-  if (topicString == tv_position_topic) {
-    payload[length] = '\0'; // Add end of line at end of char array to mark is as a string
-    position_req = (char *)payload;    
-    if (position_req == "close") {
-      posClose();
-    }
-    else if (position_req == "tv") {
-      posTv();
-    }
-    else if (position_req == "open") {
-      posOpen();
-    }
-    else if (position_req == "homing") {
-      homing = true;
-    }    
-    else if (position_req == "down1") {
-      down1();
-    }        
-    else if (position_req == "up1") {
-      up1();
-    }   
-    else if (position_req == "down10") {
-      down10();
-    }        
-    else if (position_req == "up10") {
-      up10();
-    }   
-    else if (position_req == "posDown") {
-      posDown();
-    }        
-    else if (position_req == "posUp") {
-      posUp();
-    }       
-    else if (position_req == "stop") {
-      stop();
-    }           
-    else if (position_req == "restart") {
-      restart();
-    } else {
-    }              
-  } // tv_position_topic
 } // mqtt callback
 
 // connect mqtt
