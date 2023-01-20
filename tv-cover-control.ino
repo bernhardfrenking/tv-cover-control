@@ -2,7 +2,7 @@
     tv-cover-control 
     Bernhard Frenking
 */
-const char* software_version = "v1.2";
+const char* software_version = "v1.4";
 
 #include "secrets.h"
 #include <ESP8266WiFi.h> 
@@ -12,21 +12,22 @@ const char* software_version = "v1.2";
 #include <ESP8266HTTPUpdateServer.h>
 
 // pins of wemos D1 mini (ESP8266)
-#define PIN_STEP_R    D0
-#define PIN_STEP_L    D6
-#define PIN_DIR       D5
-#define PIN_SENSOR_R  D2
-#define PIN_SENSOR_L  A0 // analog pin configured as digital input
-#define PIN_TV        D7
-#define PIN_PWR       D1
-#define PIN_BRK       D8
+#define PIN_STEP_R      D0
+#define PIN_STEP_L      D6
+#define PIN_DIR         D5
+#define PIN_SENSOR_R    D2
+#define PIN_SENSOR_L    A0 // analog pin configured as digital input
+#define PIN_TV_PWR      D7
+#define PIN_TVPC_PWR    D3
+#define PIN_PWR         D1
+#define PIN_BRK         D8
 //#define PIN_ENA        // enable stepper driver - if floating, always on for stepper motor driver ISD04
 
 // positions as steps
 #define CLOSE_STEPS 0               
 #define TV_STEPS 15125             
-#define OPEN_STEPS 17106      
-#define PERCENT 171      // for moving in percent of travel (hard coded to prevent calc. during runtime)
+#define OPEN_STEPS 17000      
+#define PERCENT 170      // for moving in percent of travel (hard coded to prevent calc. during runtime)
 
 // stepper and break tuning
 #define STEP_PULS_DURATION 5    // low level >4µs for stepper motor driver ISD04
@@ -43,30 +44,32 @@ ESP8266WebServer httpServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
 // MQTT
-const char* tv_position_topic = "tv/cover/set";         
-const char* tv_position_state_topic = "tv/cover/state";  
-const char* tv_availability_state_topic = "tv/cover/availability";
-const char* tv_position_percentage_topic = "tv/cover/set_position";
-const char* tv_position_percentage_state_topic = "tv/cover/position";
-const char* tv_power_switch_topic = "tv/switchTv/set";
-const char* tv_power_switch_state_topic = "tv/switchTv/state";
-const char* tv_brake_switch_topic = "tv/switchBrake/set";
-const char* tv_brake_switch_state_topic = "tv/switchBrake/state";
+const char* tv_position_topic                   = "tv/cover/set";         
+const char* tv_position_state_topic             = "tv/cover/state";  
+const char* tv_availability_state_topic         = "tv/cover/availability";
+const char* tv_position_percentage_topic        = "tv/cover/set_position";
+const char* tv_position_percentage_state_topic  = "tv/cover/position";
+const char* tv_pwr_switch_topic                 = "tv/switchTv/set";
+const char* tv_pwr_switch_state_topic           = "tv/switchTv/state";
+const char* tvpc_pwr_switch_topic               = "tvpc/power/set";
+const char* tvpc_pwr_switch_state_topic         = "tvpc/power/state";
+const char* tv_brake_switch_topic               = "tv/switchBrake/set";
+const char* tv_brake_switch_state_topic         = "tv/switchBrake/state";
 
 String tmp_str; // String for publishing MQTT messages
 char buf[5]; // buffer publishing MQTT messages
 
 // requests/flags
 bool stop_req = false;
-bool moving = false;
-bool homing = true;
+bool moving   = false;
+bool homing   = true;
 bool contactLeft;
 bool contactRight;
 
 // step position
-int current_position = CLOSE_STEPS;
-int target_position = CLOSE_STEPS;
-unsigned long t = 0;
+int current_position  = CLOSE_STEPS;
+int target_position   = CLOSE_STEPS;
+unsigned long t       = 0;
 
 // step side for left and/or right side (stepper motor) defined 
 // based on homing sensor contact state
@@ -94,15 +97,17 @@ void setup() {
   pinMode(PIN_STEP_R, OUTPUT);
   pinMode(PIN_STEP_L, OUTPUT);
   pinMode(PIN_DIR, OUTPUT);
-  pinMode(PIN_TV, OUTPUT);
+  pinMode(PIN_TV_PWR, OUTPUT);
+  pinMode(PIN_TVPC_PWR, OUTPUT);
   pinMode(PIN_PWR, OUTPUT);
   pinMode(PIN_BRK, OUTPUT);
 
   // preset pins
-  digitalWrite(PIN_TV, HIGH);   // disable TV
-  digitalWrite(PIN_PWR, HIGH);  // disable 24V PWR
-  digitalWrite(PIN_BRK, HIGH);  // fasten break
-  digitalWrite(PIN_DIR, HIGH);  // up
+  digitalWrite(PIN_TV_PWR,  HIGH);  // disable TV PWR
+  digitalWrite(PIN_TV_PWR,  HIGH);  // disable TVPC PWR
+  digitalWrite(PIN_PWR,     HIGH);  // disable 24V PWR
+  digitalWrite(PIN_BRK,     HIGH);  // fasten break
+  digitalWrite(PIN_DIR,     HIGH);  // up
   
   //connect to WiFi
   WiFi.mode(WIFI_STA);
@@ -114,6 +119,8 @@ void setup() {
   httpServer.begin();
   MDNS.addService("http", "tcp", 80);
   httpServer.on("/", handleRoot);
+  httpServer.on("/tvPcOn", handle_tvPcOn);
+  httpServer.on("/tvPcOff", handle_tvPcOff);  
   httpServer.on("/tvOn", handle_tvOn);
   httpServer.on("/tvOff", handle_tvOff);
   httpServer.on("/posDown", handle_posDown);
@@ -144,7 +151,8 @@ void setup() {
   
   // publish MQTT status messages
   publish_tv_availability_state_topic("online");
-  publish_tvPowerSwitch_state_topic("OFF");
+  publish_tvPcPwrSwitch_state_topic("OFF");  
+  publish_tvPwrSwitch_state_topic("OFF");
   publish_brakeSwitch_state_topic("OFF");
 
   // start serial
@@ -163,7 +171,7 @@ void loop() {
     connectMQTT(); // Wifi and MQTT
     // publish MQTT status messages
     publish_tv_availability_state_topic("online");
-    //publish_tvPowerSwitch_state_topic(switchRequest);
+    //publish_tvPwrSwitch_state_topic(switchRequest);
     //publish_brakeSwitch_state_topic(switchRequest);
   }  
 
@@ -325,9 +333,14 @@ void publish_tv_position_percentage_state_topic(int current_position) {
   client.publish(tv_position_percentage_state_topic, buf, true);
 }
 
-void publish_tvPowerSwitch_state_topic(String switch_tv) {
+void publish_tvPwrSwitch_state_topic(String switch_tv) {
   switch_tv.toCharArray(buf, switch_tv.length() + 1);
-  client.publish(tv_power_switch_state_topic, buf);
+  client.publish(tv_pwr_switch_state_topic, buf);
+}
+
+void publish_tvPcPwrSwitch_state_topic(String switch_tvPcPwr) {
+  switch_tvPcPwr.toCharArray(buf, switch_tvPcPwr.length() + 1);
+  client.publish(tvpc_pwr_switch_state_topic, buf);
 }
 
 void publish_brakeSwitch_state_topic(String switch_brake) {
@@ -406,11 +419,20 @@ void step(side stepSide) {
 
 void switchTv(String switchRequest) {
   if (switchRequest == "OFF") {
-    digitalWrite(PIN_TV, HIGH); // disable 
+    digitalWrite(PIN_TV_PWR, HIGH); // disable 
   } else if (switchRequest == "ON"){
-    digitalWrite(PIN_TV, LOW); // enable 
+    digitalWrite(PIN_TV_PWR, LOW); // enable 
   }
-  publish_tvPowerSwitch_state_topic(switchRequest);
+  publish_tvPwrSwitch_state_topic(switchRequest);
+} 
+
+void switchTvPc(String switchRequest) {
+  if (switchRequest == "OFF") {
+    digitalWrite(PIN_TVPC_PWR, HIGH); // disable 
+  } else if (switchRequest == "ON"){
+    digitalWrite(PIN_TVPC_PWR, LOW); // enable 
+  }
+  publish_tvPcPwrSwitch_state_topic(switchRequest);
 } 
 
 void switchBrake(String switchRequest) {
@@ -548,8 +570,13 @@ void callback(char* topic, byte * payload, unsigned int length) {
     }
     
     // topic tv power switch
-    else if (topicString == tv_power_switch_topic) {
+    else if (topicString == tv_pwr_switch_topic) {
       switchTv((char *)payload);
+    }
+
+    // topic tvpc power switch
+    else if (topicString == tvpc_pwr_switch_topic) {
+      switchTvPc((char *)payload);
     }
   
     // topic tv elevator brake switch
@@ -610,10 +637,11 @@ boolean connectMQTT() {
   if (client.connect(SECRET_MQTT_ID, SECRET_MQTT_USER, SECRET_MQTT_PSW)) {
     //Serial.println("reconnect mqtt");
     // ... and resubscribe
-    client.subscribe(tv_power_switch_topic, 1); // qos = 1
-    client.subscribe(tv_brake_switch_topic, 0); // qos = 0
-    client.subscribe(tv_position_percentage_topic, 0); // qos = 0
-    client.subscribe(tv_position_topic, 0); // qos = 0
+    client.subscribe(tv_pwr_switch_topic,           1); // qos = 1
+    client.subscribe(tvpc_pwr_switch_topic,         1); // qos = 1
+    client.subscribe(tv_brake_switch_topic,         0); // qos = 0
+    client.subscribe(tv_position_percentage_topic,  0); // qos = 0
+    client.subscribe(tv_position_topic,             0); // qos = 0
   }
   //Serial.print("MQTT connected: ");
   //Serial.println(client.connected());
@@ -635,6 +663,15 @@ void handle_tvOn() {
 }
 void handle_tvOff() {
   switchTv("OFF");
+  httpServer.send(200, "text/html", SendHTML());
+}
+
+void handle_tvPcOn() {
+  switchTvPc("ON");
+  httpServer.send(200, "text/html", SendHTML());
+}
+void handle_tvPcOff() {
+  switchTvPc("OFF");
   httpServer.send(200, "text/html", SendHTML());
 }
 
@@ -748,9 +785,13 @@ String SendHTML() {
   ptr += "<h1>TV-Controller</h1>\n";
   ptr += software_version;
 
-  ptr += "<p>TV-Power</p><a class="" href=""></a>\n";
+  ptr += "<p>TV-Pwr</p><a class="" href=""></a>\n";
   ptr += "<a class=\"button button-10\" href=\"/tvOn\">On</a>&nbsp;\n";
   ptr += "<a class=\"button button-0\" href=\"/tvOff\">Off</a><br><br><br>\n";
+
+  ptr += "<p>TVPC-Pwr</p><a class="" href=""></a>\n";
+  ptr += "<a class=\"button button-10\" href=\"/tvPcOn\">On</a>&nbsp;\n";
+  ptr += "<a class=\"button button-0\" href=\"/tvPcOff\">Off</a><br><br><br>\n";
   
   ptr += "<p>24V/Stepper on and brake release </p><a class="" href=""></a>\n";
   ptr += "<a class=\"button button-10\" href=\"/brakeOn\">On</a>&nbsp;\n";
